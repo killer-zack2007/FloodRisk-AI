@@ -20,6 +20,67 @@ import streamlit as st
 from pathlib import Path
 
 # Folder containing app.py
+
+# ============================================================
+# MODEL PATH CONFIGURATION
+# Works on Streamlit Cloud and Google Colab
+# ============================================================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Primary paths — used by GitHub / Streamlit Cloud
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "models",
+    "flood_prediction_model.joblib"
+)
+
+FEATURE_PATH = os.path.join(
+    BASE_DIR,
+    "models",
+    "feature_columns.json"
+)
+
+METADATA_PATH = os.path.join(
+    BASE_DIR,
+    "models",
+    "model_metadata.json"
+)
+
+# Google Drive fallback for Colab
+DRIVE_ROOT = "/content/drive/MyDrive/Flood_Prediction"
+
+if not os.path.exists(MODEL_PATH):
+    drive_model = os.path.join(
+        DRIVE_ROOT,
+        "models",
+        "flood_prediction_model.joblib"
+    )
+
+    if os.path.exists(drive_model):
+        MODEL_PATH = drive_model
+
+if not os.path.exists(FEATURE_PATH):
+    drive_features = os.path.join(
+        DRIVE_ROOT,
+        "models",
+        "feature_columns.json"
+    )
+
+    if os.path.exists(drive_features):
+        FEATURE_PATH = drive_features
+
+if not os.path.exists(METADATA_PATH):
+    drive_metadata = os.path.join(
+        DRIVE_ROOT,
+        "models",
+        "model_metadata.json"
+    )
+
+    if os.path.exists(drive_metadata):
+        METADATA_PATH = drive_metadata
+
+
 BASE_DIR = Path(__file__).resolve().parent
 
 # Deployment paths — used by Streamlit Cloud / GitHub
@@ -65,17 +126,9 @@ if not FEATURE_PATH.exists():
         "Expected feature_columns.json in models/."
     )
 
-MODEL_PATH = os.path.join(
-    PROJECT_ROOT,
-    "models",
-    "flood_prediction_model.joblib"
-)
 
-FEATURE_PATH = os.path.join(
-    PROJECT_ROOT,
-    "models",
-    "feature_columns.json"
-)
+
+
 
 
 # ============================================================
