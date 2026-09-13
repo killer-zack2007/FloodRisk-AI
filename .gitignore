@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Secrets
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Colab/local files
+*.log
+
+# Large datasets
+data/*.csv
+data/*.zip
+data/*.parquet
+
+# Generated files
+outputs/*.csv
+results/*.csv
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store

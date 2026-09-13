@@ -1,0 +1,33 @@
+{
+    "model_type": "LinearRegression",
+    "target": "FloodProbability",
+    "features": [
+        "MonsoonIntensity",
+        "TopographyDrainage",
+        "RiverManagement",
+        "Deforestation",
+        "Urbanization",
+        "ClimateChange",
+        "DamsQuality",
+        "Siltation",
+        "AgriculturalPractices",
+        "Encroachments",
+        "IneffectiveDisasterPreparedness",
+        "DrainageSystems",
+        "CoastalVulnerability",
+        "Landslides",
+        "Watersheds",
+        "DeterioratingInfrastructure",
+        "PopulationScore",
+        "WetlandLoss",
+        "InadequatePlanning",
+        "PoliticalFactors"
+    ],
+    "number_of_features": 20,
+    "training_rows": 1117957,
+    "training_time_seconds": 1.0322957038879395,
+    "validation_mae": 0.01579247,
+    "validation_rmse": 0.02008,
+    "validation_r2": 0.84487734,
+    "random_state": 42
+}
