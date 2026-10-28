@@ -6,6 +6,23 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+# ============================================================
+# FLOODGUARD AI CORE ENGINE
+# ============================================================
+
+import sys
+
+PROJECT_ROOT = "/content/drive/MyDrive/Flood_Prediction"
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from src.predictor import FloodPredictor
+from src.risk_engine import (
+    build_risk_result,
+    classify_risk
+)
+
 
 # ============================================================
 # CONFIG
@@ -136,7 +153,7 @@ if not FEATURE_PATH.exists():
 # ============================================================
 
 st.set_page_config(
-    page_title="FloodRisk AI",
+    page_title="FloodGuard AI",
     page_icon="🌊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -378,8 +395,26 @@ def load_features():
         return json.load(f)
 
 
+@st.cache_data
+def load_metadata():
+    if not os.path.isfile(METADATA_PATH):
+        return {}
+    with open(METADATA_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 model = load_model()
 FEATURES = load_features()
+MODEL_METADATA = load_metadata()
+
+# ============================================================
+# FLOODGUARD AI CORE PREDICTOR
+# ============================================================
+
+predictor_engine = FloodPredictor(
+    model_path=str(MODEL_PATH),
+    feature_columns_path=str(FEATURE_PATH)
+)
 
 
 # ============================================================
@@ -403,14 +438,14 @@ st.markdown(
 )
 
 st.markdown(
-    '<div class="hero-title">🌊 FloodRisk AI</div>',
+    '<div class="hero-title">🌊 FloodGuard AI</div>',
     unsafe_allow_html=True
 )
 
 st.markdown(
     '<div class="hero-subtitle">'
-    'Estimate flood probability, understand the strongest risk factors, '
-    'and explore how changing conditions may affect the model prediction.'
+    'Assess flood risk, understand the strongest contributing factors, '
+    'and explore how changing conditions may affect the model assessment.'
     '</div>',
     unsafe_allow_html=True
 )
@@ -593,14 +628,24 @@ predict_clicked = st.button(
 
 if predict_clicked:
 
-    input_df = pd.DataFrame(
-        [[values[f] for f in FEATURES]],
-        columns=FEATURES
+    # --------------------------------------------------------
+    # FLOODGUARD AI CORE PREDICTION ENGINE
+    # --------------------------------------------------------
+
+    prediction_features = {
+        feature: values[feature]
+        for feature in FEATURES
+    }
+
+    # Use the centralized FloodGuard predictor
+    prediction = predictor_engine.predict(
+        prediction_features
     )
 
-    prediction = float(model.predict(input_df)[0])
-
-    prediction = float(np.clip(prediction, 0.0, 1.0))
+    # Keep the original 0–1 model scale
+    prediction = float(
+        np.clip(prediction, 0.0, 1.0)
+    )
 
     st.session_state.prediction = prediction
 
@@ -620,16 +665,16 @@ if predict_clicked:
 if st.session_state.prediction is not None:
 
     prediction = st.session_state.prediction
+
+    # FloodGuard AI Risk Score
     percentage = prediction * 100
 
-    if percentage < 35:
-        risk = "LOW"
-    elif percentage < 55:
-        risk = "MODERATE"
-    elif percentage < 70:
-        risk = "HIGH"
-    else:
-        risk = "VERY HIGH"
+    risk_result = build_risk_result(
+        percentage
+    )
+
+    risk = risk_result["level"]
+    risk_emoji = risk_result["emoji"]
 
     st.write("")
     st.markdown("---")
@@ -643,8 +688,8 @@ if st.session_state.prediction is not None:
         f"""
         <div class="glass-card risk-score">
             <div class="section-subtitle">CURRENT FLOOD RISK SCORE</div>
-            <div class="risk-number">{percentage:.1f}%</div>
-            <div class="risk-label">⚠️ {risk} RISK</div>
+            <div class="risk-number">{percentage:.1f}/100</div>
+            <div class="risk-label">{risk_emoji} {risk} RISK</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -660,20 +705,20 @@ if st.session_state.prediction is not None:
 
     with c1:
         st.metric(
-            "Probability",
-            f"{prediction:.4f}"
+            "Risk Score",
+            f"{percentage:.2f}/100"
         )
 
     with c2:
         st.metric(
-            "Percentage",
-            f"{percentage:.2f}%"
+            "Model Output",
+            f"{prediction:.4f}"
         )
 
     with c3:
         st.metric(
             "Risk Level",
-            risk
+            f"{risk_emoji} {risk}"
         )
 
 
@@ -834,13 +879,13 @@ if st.session_state.prediction is not None:
     scenario_values_dict = values.copy()
     scenario_values_dict[scenario_feature] = scenario_value
 
-    scenario_df = pd.DataFrame(
-        [[scenario_values_dict[f] for f in FEATURES]],
-        columns=FEATURES
-    )
+    scenario_features = {
+        feature: scenario_values_dict[feature]
+        for feature in FEATURES
+    }
 
-    scenario_prediction = float(
-        model.predict(scenario_df)[0]
+    scenario_prediction = predictor_engine.predict(
+        scenario_features
     )
 
     scenario_prediction = float(
@@ -889,12 +934,12 @@ if st.session_state.prediction is not None:
             st.session_state.history
         )
 
-        history_df["Probability (%)"] = (
+        history_df["Risk Score (%)"] = (
             history_df["Prediction"] * 100
         )
 
         st.line_chart(
-            history_df.set_index("Time")["Probability (%)"]
+            history_df.set_index("Time")["Risk Score (%)"]
         )
 
 
@@ -907,25 +952,26 @@ st.markdown("---")
 st.write("")
 
 with st.expander("🔬 Model Information"):
-
     st.markdown(
-        """
-        **Algorithm:** Linear Regression
+        f"""
+        **Algorithm:** {MODEL_METADATA.get("model_type", type(model).__name__)}
 
-        **Validation R²:** 0.8449
+        **Validation R²:** {float(MODEL_METADATA.get("validation_r2", 0)):.4f}
 
-        **Validation MAE:** 0.01579
+        **Validation MAE:** {float(MODEL_METADATA.get("validation_mae", 0)):.5f}
 
-        **Validation RMSE:** 0.02008
+        **Validation RMSE:** {float(MODEL_METADATA.get("validation_rmse", 0)):.5f}
 
-        **Training records:** 1,117,957
+        **Training records:** {int(MODEL_METADATA.get("training_rows", 0)):,}
 
-        **Input features:** 20
+        **Input features:** {len(FEATURES)}
 
-        The final model was selected after benchmarking multiple
-        approaches. Linear Regression achieved the strongest validation
-        performance among the tested models and also provides interpretable
-        feature coefficients.
+        **Prediction target:** {MODEL_METADATA.get("target", "FloodProbability")}
+
+        Validation metrics describe performance on the held-out dataset.
+        They do not establish real-world flood forecasting accuracy.
+        Risk categories are prototype application labels, not official
+        warning levels.
         """
     )
 
@@ -937,7 +983,7 @@ with st.expander("🔬 Model Information"):
 st.markdown(
     """
     <div class="footer">
-        🌊 FloodRisk AI · Machine Learning Flood Probability Estimator
+        🌊 FloodGuard AI · Machine Learning Flood Probability Estimator
         <br>
         Built with Python · Scikit-learn · Streamlit
     </div>
